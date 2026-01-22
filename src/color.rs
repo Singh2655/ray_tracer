@@ -3,6 +3,8 @@ use std::{
     ops::{Add, Mul},
 };
 
+use crate::vec3::Vec3;
+
 #[derive(Debug)]
 pub struct Color {
     pub r: f64,
@@ -22,6 +24,12 @@ pub fn write_color(out: &mut impl Write, pixel_color: Color) {
     let bbyte = (255.999 * pixel_color.b) as usize;
 
     writeln!(out, "{rbyte} {gbyte} {bbyte}").unwrap();
+}
+
+impl From<Vec3> for Color {
+    fn from(value: Vec3) -> Self {
+        Color::new(value.x, value.y, value.z)
+    }
 }
 
 impl Mul<f64> for Color {

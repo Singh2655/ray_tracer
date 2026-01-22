@@ -1,7 +1,4 @@
-use std::{
-    f64::consts::SQRT_2,
-    ops::{Div, Sub},
-};
+use std::ops::{Div, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
@@ -22,13 +19,29 @@ impl Vec3 {
         }
     }
 
+    pub fn dot(u: Vec3, v: Vec3) -> f64 {
+        return u.x * v.x + u.y * v.y + u.z * v.z;
+    }
+
+    pub fn cross(u: Vec3, v: Vec3) -> Vec3 {
+        Vec3::new(
+            u.y * v.z - u.z * v.y,
+            u.z * v.x - u.x * v.z,
+            u.x * v.y - u.y * v.x,
+        )
+    }
+
     pub fn unit_vector(v: Vec3) -> Self {
         v / Self::length(v)
     }
 
     fn length(v: Vec3) -> f64 {
-        let squaree = v.x * v.x + v.y * v.y + v.z * v.z;
+        let squaree = Self::length_squared(v);
         squaree.sqrt()
+    }
+
+    pub fn length_squared(v: Vec3) -> f64 {
+        v.x * v.x + v.y * v.y + v.z * v.z
     }
 }
 
@@ -45,5 +58,12 @@ impl Sub<Vec3> for Vec3 {
     type Output = Vec3;
     fn sub(self, rhs: Vec3) -> Self::Output {
         Vec3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+    fn neg(self) -> Self::Output {
+        Vec3::new(-self.x, -self.y, -self.z)
     }
 }
