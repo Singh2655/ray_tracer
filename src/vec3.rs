@@ -1,5 +1,7 @@
 use std::ops::{Div, Neg, Sub};
 
+use crate::util::{random_f64, random_f64_range};
+
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
     pub x: f64,
@@ -42,6 +44,38 @@ impl Vec3 {
 
     pub fn length_squared(v: Vec3) -> f64 {
         v.x * v.x + v.y * v.y + v.z * v.z
+    }
+
+    pub fn random(&self) -> Self {
+        Self::new(random_f64(), random_f64(), random_f64())
+    }
+
+    pub fn random_range(min: f64, max: f64) -> Self {
+        Self::new(
+            random_f64_range(min, max),
+            random_f64_range(min, max),
+            random_f64_range(min, max),
+        )
+    }
+
+    pub fn random_unit_vector() -> Self {
+        loop {
+            let p = Self::random_range(-1.0, 1.0);
+            let lensq = Self::length_squared(p);
+            if 1e-160 < lensq && lensq <= 1.0 {
+                return p / lensq.sqrt();
+            }
+        }
+    }
+
+    pub fn random_on_hemishpere(normal: Vec3) -> Self {
+        let on_unit_square = Self::random_unit_vector();
+
+        if Self::dot(on_unit_square, normal) > 0.0 {
+            return on_unit_square;
+        } else {
+            return -on_unit_square;
+        }
     }
 }
 
