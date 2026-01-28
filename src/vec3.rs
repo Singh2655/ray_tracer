@@ -1,4 +1,7 @@
-use std::ops::{Div, Neg, Sub};
+use std::{
+    cmp::min,
+    ops::{Div, Neg, Sub},
+};
 
 use crate::util::{random_f64, random_f64_range};
 
@@ -37,13 +40,18 @@ impl Vec3 {
         v / Self::length(v)
     }
 
-    fn length(v: Vec3) -> f64 {
+    pub fn length(v: Vec3) -> f64 {
         let squaree = Self::length_squared(v);
         squaree.sqrt()
     }
 
     pub fn length_squared(v: Vec3) -> f64 {
         v.x * v.x + v.y * v.y + v.z * v.z
+    }
+
+    pub fn near_zero(&self) -> bool {
+        const S: f64 = 1e-8;
+        self.x.abs() < S && self.y.abs() < S && self.z.abs() < S
     }
 
     pub fn random(&self) -> Self {
@@ -76,6 +84,17 @@ impl Vec3 {
         } else {
             return -on_unit_square;
         }
+    }
+
+    pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+        v - 2.0 * Self::dot(v, n) * n
+    }
+
+    pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) -> Vec3 {
+        let cos_theta = Self::dot(-uv, n).min(1.0);
+        let r_out_perp = etai_over_etat * (uv + cos_theta * n);
+        let r_out_parallel = -((1.0 - Self::length_squared(r_out_perp)).abs()).sqrt() * n;
+        return r_out_perp + r_out_parallel;
     }
 }
 

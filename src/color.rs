@@ -5,7 +5,7 @@ use std::{
 
 use crate::{interval::Interval, vec3::Vec3};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Color {
     pub r: f64,
     pub g: f64,
@@ -21,11 +21,18 @@ impl Color {
 const INTENSITY: Interval = Interval::new(0.0, 0.999);
 
 pub fn write_color(out: &mut impl Write, pixel_color: Color) {
-    let rbyte: usize = (256.0 * INTENSITY.clamp(pixel_color.r)) as usize;
-    let gbyte = (256.0 * INTENSITY.clamp(pixel_color.g)) as usize;
-    let bbyte = (255.999 * INTENSITY.clamp(pixel_color.b)) as usize;
+    let rbyte: usize = (256.0 * INTENSITY.clamp(linear_to_gamma(pixel_color.r))) as usize;
+    let gbyte = (256.0 * INTENSITY.clamp(linear_to_gamma(pixel_color.g))) as usize;
+    let bbyte = (256.0 * INTENSITY.clamp(linear_to_gamma(pixel_color.b))) as usize;
 
     writeln!(out, "{rbyte} {gbyte} {bbyte}").unwrap();
+}
+
+fn linear_to_gamma(linear_component: f64) -> f64 {
+    if linear_component > 0.0 {
+        return linear_component.sqrt();
+    }
+    0.0
 }
 
 impl From<Vec3> for Color {
@@ -52,5 +59,12 @@ impl Add<Color> for Color {
     type Output = Color;
     fn add(self, rhs: Color) -> Self::Output {
         Color::new(self.r + rhs.r, self.g + rhs.g, self.b + rhs.b)
+    }
+}
+
+impl Mul<Color> for Color {
+    type Output = Color;
+    fn mul(self, rhs: Color) -> Self::Output {
+        Color::new(self.r * rhs.r, self.g * rhs.g, self.b * rhs.b)
     }
 }

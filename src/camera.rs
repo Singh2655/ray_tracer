@@ -3,7 +3,7 @@ use crate::{
     hittable::Hittable,
     interval::Interval,
     ray::Ray,
-    util::random_f64,
+    util::{degrees_to_radian, random_f64},
     vec3::{Point3, Vec3},
 };
 
@@ -11,6 +11,11 @@ pub struct Camera {
     pub aspect_ratio: f64,
     pub image_width: usize,
     pub sample_per_pixel: usize,
+    pub max_depth: usize,
+    pub vfov: f64,
+    pub look_from: Point3,
+    pub look_at: Point3,
+    pub vup: Vec3,
 
     //private
     image_height: usize,
@@ -19,6 +24,11 @@ pub struct Camera {
     pixel00_loc: Point3,
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
+
+    //Camera frame basis vectors
+    u: Vec3,
+    v: Vec3,
+    w: Vec3,
 }
 
 impl Camera {
@@ -27,12 +37,20 @@ impl Camera {
             aspect_ratio: 1.0,
             image_width: 100,
             image_height: 0,
+            max_depth: 10,
+            vfov: 90.0,
+            look_from: Point3::zero(),
+            look_at: Point3::new(0.0, 0.0, -1.0),
+            vup: Vec3::new(0.0, 1.0, 0.0),
             pixel_samples_scale: 0.0,
             sample_per_pixel: 10,
             center: Point3::zero(),
             pixel00_loc: Point3::zero(),
             pixel_delta_u: Vec3::zero(),
             pixel_delta_v: Vec3::zero(),
+            u: Vec3::zero(),
+            v: Vec3::zero(),
+            w: Vec3::zero(),
         }
     }
     pub fn render(&mut self, world: &impl Hittable) {
@@ -48,7 +66,7 @@ impl Camera {
 
                 for _sample in 0..self.sample_per_pixel {
                     let r = self.get_ray(i, j);
-                    pixel_color = pixel_color + self.ray_color(&r, world)
+                    pixel_color = pixel_color + self.ray_color(&r, self.max_depth, world);
                 }
                 write_color(&mut out, self.pixel_samples_scale * pixel_color);
             }
@@ -66,16 +84,21 @@ impl Camera {
 
         self.pixel_samples_scale = 1.0 / self.sample_per_pixel as f64;
 
-        self.center = Point3::new(0.0, 0.0, 0.0);
+        self.center = self.look_from;
 
         // Determine viewport dimensions.
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
+        let focal_length = Point3::length(self.look_from - self.look_at);
+        let theta = degrees_to_radian(self.vfov);
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h * focal_length;
         let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
 
+        self.w = Vec3::unit_vector(self.look_from - self.look_at);
+        self.u = Vec3::unit_vector(Vec3::cross(self.vup, self.w));
+        self.v = Vec3::cross(self.w, self.u);
         // Calculate the vectors across the horizontal and down the vertical viewport edges.
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
+        let viewport_u = viewport_width * self.u;
+        let viewport_v = viewport_height * -self.v;
 
         // Calculate the horizontal and vertical delta vectors from pixel to pixel.
         self.pixel_delta_u = viewport_u / self.image_width as f64;
@@ -83,14 +106,19 @@ impl Camera {
 
         // Calculate the location of the upper left pixel.
         let viewport_upper_left =
-            self.center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
+            self.center - (focal_length * self.w) - viewport_u / 2.0 - viewport_v / 2.0;
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v);
     }
 
-    pub fn ray_color(&self, ray: &Ray, world: &impl Hittable) -> Color {
-        if let Some(rec) = world.hit(ray, Interval::new(0.0, f64::INFINITY)) {
-            let direction = Vec3::random_on_hemishpere(rec.normal);
-            return 0.5 * (Self::ray_color(&self, &Ray::new(rec.p, direction), world));
+    pub fn ray_color(&self, ray: &Ray, depth: usize, world: &impl Hittable) -> Color {
+        if let Some(rec) = world.hit(ray, Interval::new(0.001, f64::INFINITY)) {
+            if depth == 0 {
+                return Color::new(0.0, 0.0, 0.0);
+            }
+            if let Some((attenuation, scattered)) = rec.material.scatter(ray, &rec) {
+                return attenuation * Self::ray_color(&self, &scattered, depth - 1, world);
+            }
+            return Color::new(0.0, 0.0, 0.0);
         }
 
         let unit_direction = Vec3::unit_vector(ray.direction);
