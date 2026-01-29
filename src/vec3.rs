@@ -1,7 +1,4 @@
-use std::{
-    cmp::min,
-    ops::{Div, Neg, Sub},
-};
+use std::ops::{Div, Mul, Neg, Sub};
 
 use crate::util::{random_f64, random_f64_range};
 
@@ -40,6 +37,20 @@ impl Vec3 {
         v / Self::length(v)
     }
 
+    pub fn random_in_unit_disk() -> Vec3 {
+        loop {
+            let p = Vec3::new(
+                random_f64_range(-1.0, 1.0),
+                random_f64_range(-1.0, 1.0),
+                0.0,
+            );
+
+            if Self::length_squared(p) < 1.0 {
+                return p;
+            }
+        }
+    }
+
     pub fn length(v: Vec3) -> f64 {
         let squaree = Self::length_squared(v);
         squaree.sqrt()
@@ -54,7 +65,7 @@ impl Vec3 {
         self.x.abs() < S && self.y.abs() < S && self.z.abs() < S
     }
 
-    pub fn random(&self) -> Self {
+    pub fn random() -> Self {
         Self::new(random_f64(), random_f64(), random_f64())
     }
 
@@ -118,5 +129,12 @@ impl Neg for Vec3 {
     type Output = Vec3;
     fn neg(self) -> Self::Output {
         Vec3::new(-self.x, -self.y, -self.z)
+    }
+}
+
+impl Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3::new(self.x * rhs.x, self.y * rhs.y, self.z * rhs.z)
     }
 }
